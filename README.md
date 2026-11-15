@@ -11,10 +11,10 @@ PDB IDs → Cα coordinates → pairwise distance matrix → clip + normalise �
         → UNet DDPM (noise prediction, masked loss) → DDPM sampling → rescale to Å → MDS → 3D Cα trace
 ```
  
-1. **Preprocessing**: downloads structures with Biopython, takes the first chain, extracts one Cα per standard residue, and computes the L×L Euclidean distance matrix. Distances are clipped at 40 Å and scaled to [-1, 1]. Maps are randomly cropped to 64×64 if longer, or padded if shorter, using a sentinel value of `-2.0` that can't occur in real data.
-2. **Model**: a UNet with residual blocks, self-attention, and sinusoidal time embeddings, adapted from a from-scratch Stable Diffusion implementation (**[https://github.com/hkproj/pytorch-stable-diffusion]**). Input and output are changed to a single channel. Cross-attention takes a zero dummy context, since this baseline is unconditional.
+1. **Preprocessing**: downloads structures with Biopython, takes the first chain, extracts one Cα per standard residue, and computes the L×L Euclidean distance matrix. The distances are clipped at 40 Å and scaled to [-1, 1], and the maps are randomly cropped to 64×64 if longer, or padded if shorter, using a value (`-2.0`) that can't occur in real data.
+2. **Model**: a UNet with residual blocks, self-attention, and sinusoidal time embeddings, adapted from a from-scratch Stable Diffusion implementation (**[https://github.com/hkproj/pytorch-stable-diffusion]**). The input and output are changed to a single channel instead, and cross-attention takes a zero dummy context, since this baseline is unconditional.
 3. **Training**: noise-prediction objective. The loss is a **masked MSE** computed only over real (non-padded) entries, so the constant padding region doesn't dilute the loss or make it look better than it is.
-4. **Sampling** (`ddpm.py`, `sample.py`): DDPM ancestral sampling with 50 inference steps. The predicted x0 is clamped to [-1, 1] at each step. Output is rescaled to 0–40 Å.
+4. **Sampling** (`ddpm.py`, `sample.py`): DDPM ancestral sampling with 50 inference steps. The output is then rescaled to 0–40 Å.
 5. **Reconstruction**: the generated map is symmetrised, and embedded in 3D with metric MDS.
 
 
@@ -27,10 +27,10 @@ PDB IDs → Cα coordinates → pairwise distance matrix → clip + normalise �
 
 ## What doesn't work yet (known issues)
  
-- **Samples are poor.** The baseline was trained on only 10 structures (8 train / 2 test) for about 160 gradient steps at batch size 1, which is far too little.
-- **No length conditioning.** The model always generates a full 64×64 map, and nothing tells it the protein length, so visualisation crops `[:L, :L]` manually.
+- **Samples are poor.** The baseline was trained on only 10 structures (8 train / 2 test) with a batch size of 1, which is far too little.
+- **No length conditioning.** The model always generates a full 64×64 map, and nothing tells it the protein length.
 - **Generated maps aren't guaranteed to be valid distance matrices** so MDS traces from samples are noisy.
-- **Oversized model for the data.** The UNet has ~37M parameters, and attention at the 64×64 level is expensive and unnecessary for a dataset this small.
+- **Oversized model for the data.** The UNet has ~37M parameters, which is quite unnecessary for such a small dataset.
 
 ## Usage
  
@@ -42,11 +42,11 @@ pip install torch numpy biopython scikit-learn matplotlib tqdm
  
 ## Roadmap
  
-- [ ] Scale to a clustered, non-redundant set of a few thousand protein domains, split by cluster
+- [ ] Scale to a few thousand proteins
 - [ ] Apply random crops at load time (data augmentation) instead of once in preprocessing
-- [ ] Smaller UNet, with attention only at lower resolutions
-- [ ] Train for tens of thousands of steps with batch size > 1 and a lower learning rate
-- [ ] Condition on ESM-2 sequence embeddings (precomputed and cached)
+- [ ] Smaller UNet to suit the size of the dataset
+- [ ] Train for more steps with batch size > 1 with an optimised learning rate
+- [ ] Condition on ESM-2 sequence embeddings 
 - [ ] Evaluate with proper metrics (symmetry error, contact precision, nearest-training-map distance)
 
 ## Acknowledgements
