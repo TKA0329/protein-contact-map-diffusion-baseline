@@ -42,7 +42,7 @@ pip install torch numpy biopython scikit-learn matplotlib tqdm
  
 ## Roadmap
  
-- [ ] Scale to a few thousand proteins
+- [ ] Scale the dataset to a few thousand proteins
 - [ ] Apply random crops at load time (data augmentation) instead of once in preprocessing
 - [ ] Smaller UNet to suit the size of the dataset
 - [ ] Train for more steps with batch size > 1 with an optimised learning rate
